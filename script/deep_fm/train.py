@@ -76,7 +76,7 @@ def train():
                                (event.pass_id, event.batch_id, num_samples,
                                 event.cost, event.metrics))
 
-            if event.batch_id % 10000 == 0:
+            if event.batch_id % 10000 == 1:
                 if args.test_data_path:
                     result = trainer.test(
                         reader=paddle.batch(
