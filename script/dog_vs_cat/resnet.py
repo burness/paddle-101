@@ -107,7 +107,11 @@ def train(args):
         cost = fluid.layers.cross_entropy(input=predict, label=label)
         avg_cost = fluid.layers.mean(x=cost)
         batch_acc = fluid.layers.accuracy(input=predict, label=label)
+<<<<<<< HEAD:script/dog_vs_cat/resnet.py
         return [avg_cost, batch_acc]
+=======
+        return avg_cost
+>>>>>>> 7872e0d6bdd6bbfd31cad3ff419fe91c1b9ee1cb:script/porn_detection/resnet.py
     # scalar_avg_cost = logger.scalar("avg_cost")
     # scalar_batch_acc = logger.scalar("batch_acc") 
 
@@ -121,11 +125,16 @@ def train(args):
         batch_size=args.batch_size
         )
     batched_test_reader = paddle.batch(
+<<<<<<< HEAD:script/dog_vs_cat/resnet.py
         test_reader, batch_size=args.batch_size)
+=======
+        train_reader, batch_size=args.batch_size)
+>>>>>>> 7872e0d6bdd6bbfd31cad3ff419fe91c1b9ee1cb:script/porn_detection/resnet.py
     
     def event_handler(event):
         if isinstance(event, fluid.EndStepEvent):
             # scalar_avg_cost.add_record()
+<<<<<<< HEAD:script/dog_vs_cat/resnet.py
             #avg_cost, accuracy = trainer.test(
             #    reader=batched_test_reader, feed_order=['image', 'label'])
             print('Pass:{0},Step: {1},Metric: {2}'.format(event.epoch, event.step, event.metrics))
@@ -138,12 +147,24 @@ def train(args):
             trainer.save_params("./ckpt") 
             # write the loss, acc to visualdl file
             pass
+=======
+            avg_cost, accuracy = trainer.test(
+                reader=batched_test_reader, feed_order=['image', 'label'])
+            print('Loss {0:2.2}, Acc {1:2.2}'.format(avg_cost, accuracy))
+            # write the loss, acc to visualdl file
+        if isinstance(event, fluid.EndEpochEvent):
+            # save model to dir
+            trainer.save_params(".")
+>>>>>>> 7872e0d6bdd6bbfd31cad3ff419fe91c1b9ee1cb:script/porn_detection/resnet.py
 
     # place = fluid.CUDAPlace(0) if args.use_cuda else fluid.CPUPlace()
     place = fluid.CUDAPlace(0)
     trainer = fluid.Trainer(
         train_func=train_network, optimizer=optimizer, place=place)
+<<<<<<< HEAD:script/dog_vs_cat/resnet.py
     print("Begin to Train")
+=======
+>>>>>>> 7872e0d6bdd6bbfd31cad3ff419fe91c1b9ee1cb:script/porn_detection/resnet.py
     trainer.train(
         reader=batched_train_reader,
         num_epochs=args.pass_num,
