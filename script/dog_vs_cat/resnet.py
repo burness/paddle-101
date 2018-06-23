@@ -7,15 +7,14 @@ import numpy as np
 import time
 import os
 
-import cProfile, pstats, StringIO
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.profiler as profiler
 from recordio_converter import imagenet_dataset
-from visualdl import LogWriter
-
+#from visualdl import LogWriter
+from args import parse_args
 
 def conv_bn_layer(input, ch_out, filter_size, stride, padding, act='relu'):
     conv1 = fluid.layers.conv2d(
@@ -59,7 +58,7 @@ def layer_warp(block_func, input, ch_out, count, stride):
     return res_out
 
 
-def resnet_imagenet(input, class_dim, depth=50, data_format='NCHW'):
+def resnet_imagenet(input, class_dim, depth=18, data_format='NCHW'):
 
     cfg = {
         18: ([2, 2, 2, 1], basicblock),
@@ -86,9 +85,9 @@ def resnet_imagenet(input, class_dim, depth=50, data_format='NCHW'):
     return out
 
 def train(args):
-    logger = LogWriter(args.logdir, sync_cycle=10000)
+    # logger = LogWriter(args.logdir, sync_cycle=10000)
     model = resnet_imagenet
-    class_dim = 1000
+    class_dim = args.class_dim
     if args.data_format == 'NCHW':
         dshape = [3, 224, 224]
     else:
@@ -98,44 +97,65 @@ def train(args):
         raise Exception(
             "Must specify --data_path when training with imagenet")
     train_reader, test_reader = imagenet_dataset(args.data_path)
-    input = fluid.layers.data(name='image', shape=dshape, dtype='float32')
-    predict = model(input, class_dim)
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-    cost = fluid.layers.cross_entropy(input=predict, label=label)
-    avg_cost = fluid.layers.mean(x=cost)
-    batch_acc = fluid.layers.accuracy(input=predict, label=label)
+    print(train_reader)
 
-    train_program = [avg_cost, batch_acc]
+    
+    def train_network():
+        input = fluid.layers.data(name='image', shape=dshape, dtype='float32')
+        predict = model(input, class_dim)
+        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+        cost = fluid.layers.cross_entropy(input=predict, label=label)
+        avg_cost = fluid.layers.mean(x=cost)
+        batch_acc = fluid.layers.accuracy(input=predict, label=label)
+        return [avg_cost, batch_acc]
+    # scalar_avg_cost = logger.scalar("avg_cost")
+    # scalar_batch_acc = logger.scalar("batch_acc") 
+
+    #train_program = avg_cost
 
     optimizer = fluid.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
 
     batched_train_reader = paddle.batch(
         paddle.reader.shuffle(
             train_reader, buf_size=5120),
-        batch_size=args.batch_size * args.gpus,
-        drop_last=True)
+        batch_size=args.batch_size
+        )
     batched_test_reader = paddle.batch(
-        train_reader, batch_size=args.batch_size, drop_last=True)
+        test_reader, batch_size=args.batch_size)
     
     def event_handler(event):
-         if isinstance(event, fluid.EndStepEvent):
-            avg_cost, accuracy = trainer.test(
-                reader=batched_test_reader, feed_order=['image', 'label'])
-            print('Loss {0:2.2}, Acc {1:2.2}'.format(avg_cost, accuracy))
+        if isinstance(event, fluid.EndStepEvent):
+            # scalar_avg_cost.add_record()
+            #avg_cost, accuracy = trainer.test(
+            #    reader=batched_test_reader, feed_order=['image', 'label'])
+            print('Pass:{0},Step: {1},Metric: {2}'.format(event.epoch, event.step, event.metrics))
             # write the loss, acc to visualdl file
         if isinstance(event, fluid.EndEpochEvent):
             # save model to dir
-            trainer.save_params(args.params_dirname)
+            #trainer.save_params(".")
+            avg_cost, acc = trainer.test(reader=batched_test_reader, feed_order=["image", "label"])
+            print('Pass:{0},val avg_cost: {1}, acc: {2}'.format(event.epoch, avg_cost, acc))
+            trainer.save_params("./ckpt") 
+            # write the loss, acc to visualdl file
+            pass
 
-    place = fluid.CUDAPlace(0) if args.use_cuda else fluid.CPUPlace()
+    # place = fluid.CUDAPlace(0) if args.use_cuda else fluid.CPUPlace()
+    place = fluid.CUDAPlace(0)
     trainer = fluid.Trainer(
-        train_func=train_program, optimizer_func=optimizer, place=place)
-
+        train_func=train_network, optimizer=optimizer, place=place)
+    print("Begin to Train")
     trainer.train(
-        reader=train_reader,
-        num_epochs=EPOCH_NUM,
+        reader=batched_train_reader,
+        num_epochs=args.pass_num,
         event_handler=event_handler,
         feed_order=['image', 'label'])
+
+
+if __name__ == "__main__":
+    args = parse_args()
+    train(args)
+
+
 
 
     
