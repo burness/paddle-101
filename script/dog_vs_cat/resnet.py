@@ -12,7 +12,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.profiler as profiler
-from recordio_converter import imagenet_dataset
+from recordio_converter import dataset
 #from visualdl import LogWriter
 from args import parse_args
 
@@ -58,7 +58,7 @@ def layer_warp(block_func, input, ch_out, count, stride):
     return res_out
 
 
-def resnet_imagenet(input, class_dim, depth=18, data_format='NCHW'):
+def resnet(input, class_dim, depth=18, data_format='NCHW'):
 
     cfg = {
         18: ([2, 2, 2, 1], basicblock),
@@ -86,17 +86,16 @@ def resnet_imagenet(input, class_dim, depth=18, data_format='NCHW'):
 
 def train(args):
     # logger = LogWriter(args.logdir, sync_cycle=10000)
-    model = resnet_imagenet
+    model = resnet
     class_dim = args.class_dim
     if args.data_format == 'NCHW':
         dshape = [3, 224, 224]
     else:
         dshape = [224, 224, 3]
-    model = resnet_imagenet
     if not args.data_path:
         raise Exception(
-            "Must specify --data_path when training with imagenet")
-    train_reader, test_reader = imagenet_dataset(args.data_path)
+            "Must specify --data_path when training with dog vs cat")
+    train_reader, test_reader = dataset(args.data_path)
     print(train_reader)
 
     
@@ -108,7 +107,6 @@ def train(args):
         avg_cost = fluid.layers.mean(x=cost)
         batch_acc = fluid.layers.accuracy(input=predict, label=label)
         return [avg_cost, batch_acc]
-
     # scalar_avg_cost = logger.scalar("avg_cost")
     # scalar_batch_acc = logger.scalar("batch_acc") 
 

@@ -88,7 +88,7 @@ def distort_color(img):
     return img
 
 
-def process_image(sample, mode, color_jitter, rotate):
+def process_image(sample, mode, color_jitter=False, rotate=False):
     img_path = sample[0]
 
     img = Image.open(img_path)
@@ -126,7 +126,7 @@ def default_mapper(sample):
     return img.flatten().astype('float32'), label
 
 
-def imagenet_dataset(data_dir, train_val_ratio=0.8):
+def dataset(data_dir, train_val_ratio=0.8):
     img_list = []
     img2label = dict()
     label2id = dict()
@@ -169,7 +169,7 @@ def imagenet_dataset(data_dir, train_val_ratio=0.8):
                 print "error infor: {0}".format(e.message)
                 continue
     train_mapper = functools.partial(process_image, mode="train", color_jitter=False, rotate=False)
-    test_mapper = functools.partial(process_image, mode="test")
+    test_mapper = functools.partial(process_image, mode="val")
     #return paddle.reader.map_readers(default_mapper, train_reader), paddle.reader.map_readers(default_mapper, test_reader)
     return paddle.reader.xmap_readers(train_mapper, train_reader, cpu_count(), 51200), paddle.reader.xmap_readers(test_mapper, test_reader, cpu_count(), 5120)
 

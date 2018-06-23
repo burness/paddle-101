@@ -6,7 +6,8 @@ def parse_args():
     parser = argparse.ArgumentParser('Fluid Resnet')
     parser.add_argument(
         '--batch_size', type=int, default=32, help='The minibatch size.')
-    #  args related to learning rate
+    parser.add_argument(
+        '--class_dim', type=int, default=3, help='class num.')
     parser.add_argument(
         '--learning_rate', type=float, default=0.001, help='The learning rate.')
     parser.add_argument(
